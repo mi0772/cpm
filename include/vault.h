@@ -1,13 +1,13 @@
 #ifndef VAULT_H
 #define VAULT_H
 
-#include <stdbool.h>
-
 #include "../include/hash.h"
+#include <stdbool.h>
+#include <stdio.h>
 #include <sys/_types/_u_int32_t.h>
 #include <sys/_types/_u_int64_t.h>
 
-#define MAX_FIELD_SIZE  256
+#define MAX_FIELD_SIZE 256
 
 typedef struct {
     u_int32_t hash;
@@ -32,8 +32,5 @@ file_operation_result_t get_all_from_vault(vault_entry **array_out, size_t *coun
 vault_entry *vault_entry_create();
 void vault_entry_destroy(vault_entry *entry);
 bool vault_entry_exist(const char *key);
-
-
-
 
 #endif // !VAULT_H

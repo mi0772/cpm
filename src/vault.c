@@ -1,7 +1,9 @@
-#include <stdio.h>
 #include "../include/vault.h"
+#include <stddef.h>
+#include <stdio.h>
 
 #include <stdlib.h>
+#include <sys/_types/_u_int64_t.h>
 
 static const char *VAULT_FILENAME = "vault.dat";
 static const char *VAULT_IDX = "vault.idx";
@@ -73,7 +75,7 @@ file_operation_result_t get_from_vault(const uint32_t hash_key, vault_entry *ent
 
 file_operation_result_t put_to_vault(const vault_entry *entry) {
 
-    //aggiungi entry nel file .dat
+    // aggiungi entry nel file .dat
     FILE *f_vault_dat = fopen(VAULT_FILENAME, "ab+");
     if (!f_vault_dat) {
         return ERROR;
@@ -86,10 +88,10 @@ file_operation_result_t put_to_vault(const vault_entry *entry) {
     entry_index->hash = calc_hash(entry->key);
     entry_index->offset = current_offset;
 
-    //aggiungi l'entry ordinata nell'index con l'offset corretto
+    // aggiungi l'entry ordinata nell'index con l'offset corretto
     FILE *f_vault_idx = fopen(VAULT_IDX, "rb+");
     if (!f_vault_idx) {
-        //file not exist, create new one
+        // file not exist, create new one
         f_vault_idx = fopen(VAULT_IDX, "wb");
         if (!f_vault_idx) {
             return ERROR;
@@ -100,7 +102,8 @@ file_operation_result_t put_to_vault(const vault_entry *entry) {
         return OK;
     }
 
-    //il file esiste, quindi ne creo uno nuovo, inserisco ne entry mano a mano e appena trovo la posizione giusta per il nuovo la inserisco
+    // il file esiste, quindi ne creo uno nuovo, inserisco ne entry mano a mano e appena trovo la
+    // posizione giusta per il nuovo la inserisco
     FILE *f_value_idx_temp = fopen(VAULT_IDX_TEMP, "wb");
     vault_index_entry *buffer = malloc(sizeof(vault_index_entry));
 
@@ -132,23 +135,35 @@ vault_entry *vault_entry_create() {
     return entry;
 }
 
-void vault_entry_destroy(vault_entry *entry) {
-    free(entry);
-}
+void vault_entry_destroy(vault_entry *entry) { free(entry); }
 
 bool vault_entry_exist(const char *key) {
-    uint32_t hash = calc_hash(key);
-    FILE *f_vault_idx = fopen(VAULT_IDX, "rb");
-    if (!f_vault_idx) return false;
 
-    vault_index_entry entry_index;
-    while (fread(&entry_index, sizeof(entry_index), 1, f_vault_idx) == 1) {
-        if (entry_index.hash == hash) {
-            fclose(f_vault_idx);
+    u_int32_t hash = calc_hash(key);
+
+    FILE *f_idx = fopen(VAULT_IDX, "r");
+    fseek(f_idx, 0, SEEK_END);
+    size_t file_len = ftell(f_idx);
+    size_t record_number = file_len / sizeof(vault_index_entry);
+
+    int low = 0;
+    int high = record_number - 1;
+    while (low <= high) {
+        long mid = (low + high) / 2;
+        vault_index_entry entry;
+
+        fseek(f_idx, mid * sizeof(vault_index_entry), SEEK_SET);
+        fread(&entry, sizeof(vault_index_entry), 1, f_idx);
+
+        if (entry.hash == hash) {
+            fclose(f_idx);
             return true;
+        } else if (entry.hash < hash) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
         }
     }
-
-    fclose(f_vault_idx);
+    fclose(f_idx);
     return false;
 }
